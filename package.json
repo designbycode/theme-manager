@@ -1,6 +1,6 @@
 {
   "name": "@designbycode/theme-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A package to handle light and dark mode and can extend even more...",
   "main": "/dist/index.umd.cjs",
   "module": "./dist/index.js",
