@@ -8,6 +8,14 @@
   "author": "Claude Myburgh <claude@designbycode.co.za>",
   "license": "MIT",
   "types": "./dist/index.d.ts",
+  "keywords": [
+    "dark mode",
+    "darkmode",
+    "dark-mode",
+    "nightmode",
+    "night-mode",
+    "typescript"
+  ],
   "exports": {
     ".": {
       "import": "./dist/index.js",
