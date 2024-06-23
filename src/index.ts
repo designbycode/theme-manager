@@ -11,7 +11,6 @@ interface Theme {
 
 export default class ThemeManager {
     private db: IDBDatabase | null = null
-    // @ts-expect-error
     private mediaQuery: MediaQueryList
     private themes: Set<string>
 
@@ -67,6 +66,8 @@ export default class ThemeManager {
                 const theme: Theme | null = event.target.result
                 if (theme) {
                     document.documentElement.setAttribute("data-theme", this.changeTheme(theme.value))
+                } else {
+                    this.changeTheme("system") // Set default theme if no theme is found in database
                 }
             }
         }
@@ -87,20 +88,42 @@ export default class ThemeManager {
             document.documentElement.classList.remove(theme)
         })
 
-        document.documentElement.classList.add(value) // add the current theme class
-        document.documentElement.setAttribute("data-theme", value)
+        if (value === "system") {
+            // Get the system default theme
+            const systemDefaultTheme = this.mediaQuery.matches ? "dark" : "light"
+            document.documentElement.classList.add(systemDefaultTheme) // add the system default theme class
+            document.documentElement.setAttribute("data-theme", systemDefaultTheme)
 
-        if (this.db) {
-            const transaction = this.db.transaction("theme", "readwrite")
-            const objectStore = transaction.objectStore("theme")
-            const request = objectStore.put({ id: "theme", value })
+            // Save the system default theme to the database
+            if (this.db) {
+                const transaction = this.db.transaction("theme", "readwrite")
+                const objectStore = transaction.objectStore("theme")
+                const request = objectStore.put({ id: "theme", value: systemDefaultTheme })
 
-            request.onsuccess = () => {
-                // console.log("Theme saved to IndexedDB");
+                request.onsuccess = () => {
+                    // console.log("Theme saved to IndexedDB");
+                }
+
+                request.onerror = (event: any) => {
+                    console.error("Error saving theme to IndexedDB:", event.target.error)
+                }
             }
+        } else {
+            document.documentElement.classList.add(value) // add the current theme class
+            document.documentElement.setAttribute("data-theme", value)
 
-            request.onerror = (event: any) => {
-                console.error("Error saving theme to IndexedDB:", event.target.error)
+            if (this.db) {
+                const transaction = this.db.transaction("theme", "readwrite")
+                const objectStore = transaction.objectStore("theme")
+                const request = objectStore.put({ id: "theme", value })
+
+                request.onsuccess = () => {
+                    // console.log("Theme saved to IndexedDB");
+                }
+
+                request.onerror = (event: any) => {
+                    console.error("Error saving theme to IndexedDB:", event.target.error)
+                }
             }
         }
 
