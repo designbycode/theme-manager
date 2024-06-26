@@ -34,6 +34,7 @@
     "dev": "vite",
     "preview": "vite preview",
     "build": "tsc --declaration && vite build",
+    "build-watch": "tsc --watch --declaration && vite build --watch",
     "clean": "rd /s /q dist .cache>nul 2>&1|echo.>nul",
     "test": "vitest",
     "pretty": "prettier --write \"src/**/*.ts\""

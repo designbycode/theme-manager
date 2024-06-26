@@ -12,7 +12,9 @@ interface Theme {
 export default class ThemeManager {
     private db: IDBDatabase | null = null
     private mediaQuery: MediaQueryList
-    private themes: Set<string>
+    private _currentTheme: string = 'system';
+
+    themes: Set<string>
 
     /**
      * Creates a new instance of the ThemeManager
@@ -24,18 +26,18 @@ export default class ThemeManager {
         this.initDB()
     }
 
-    /**
-     * Initializes the theme manager and sets up event listeners
-     */
-    public initButtons() {
-        document.querySelectorAll("[data-theme-name]")?.forEach((button) => {
-            button.addEventListener("click", (event) => {
-                const buttonElement = event.target as HTMLElement
-                const themeValue = buttonElement.dataset.themeName
-                this.changeTheme(themeValue)
-            })
-        })
+    public get getTheme(): string {
+        return this._currentTheme
     }
+
+    public setTheme(theme: string): void {
+        if (theme) {
+            this.changeTheme(theme);
+            this._currentTheme = theme;
+        }
+    }
+
+
 
     /**
      * Initializes the IndexedDB database
@@ -51,6 +53,7 @@ export default class ThemeManager {
         request.onsuccess = (event: any) => {
             this.db = event.target.result
             this.getCurrentTheme()
+            console.log(this.getCurrentTheme())
         }
     }
 
@@ -67,11 +70,12 @@ export default class ThemeManager {
                 if (theme) {
                     document.documentElement.setAttribute("data-theme", this.changeTheme(theme.value))
                 } else {
-                    this.changeTheme("system") // Set default theme if no theme is found in database
+                    this.changeTheme("system") // Set default theme if no theme is found in a database
                 }
             }
         }
     }
+
 
     /**
      * Changes the current theme
@@ -80,7 +84,7 @@ export default class ThemeManager {
      */
     private changeTheme(value: string = "system"): string {
         if (!this.themes.has(value)) {
-            value = "system" // Fallback to default if invalid theme
+            value = "system" // Fallback to default of invalid theme
         }
 
         // Remove all theme classes
@@ -126,7 +130,39 @@ export default class ThemeManager {
                 }
             }
         }
-
         return value
+    }
+
+    /**
+     * Initializes the theme manager and sets up event listeners
+     */
+    public initButtons() {
+        document.querySelectorAll("[data-theme-name]")?.forEach((button) => {
+            button.addEventListener("click", (event) => {
+                const buttonElement = event.target as HTMLElement
+                const themeValue = buttonElement.dataset.themeName
+                this.changeTheme(themeValue)
+            })
+        })
+    }
+
+    /**
+     * Toggles between light and dark mode using all elements with data-theme-toggle attribute
+     */
+    public intToggleButton() {
+        document.querySelectorAll("[data-theme-toggle]").forEach((element) => {
+            element.addEventListener("click", () => {
+                const currentTheme = document.documentElement.getAttribute("data-theme");
+                let newTheme: string;
+
+                if (currentTheme === "light") {
+                    newTheme = "dark";
+                } else {
+                    newTheme = "light";
+                }
+
+                this.changeTheme(newTheme);
+            });
+        });
     }
 }
