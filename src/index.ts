@@ -2,59 +2,43 @@ interface Theme {
     /**
      * Unique identifier for the theme
      */
-    id: string
+    id: string;
     /**
      * Value of the theme (e.g. "dark", "light", "system")
      */
-    value: string
+    value: string;
 }
 
 export default class ThemeManager {
-    private db: IDBDatabase | null = null
-    private mediaQuery: MediaQueryList
-    private _currentTheme: string = 'system';
-
-    themes: Set<string>
+    private db: IDBDatabase | null = null;
+    private mediaQuery: MediaQueryList;
+    themes: Set<string>;
 
     /**
      * Creates a new instance of the ThemeManager
      * @param additionalThemes Optional array of additional theme values to support
      */
     constructor(additionalThemes: string[] = []) {
-        this.mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-        this.themes = new Set(["system", "dark", "light", ...additionalThemes])
-        this.initDB()
+        this.mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        this.themes = new Set(["system", "dark", "light", ...additionalThemes]);
+        this.initDB();
     }
-
-    public get getTheme(): string {
-        return this._currentTheme
-    }
-
-    public setTheme(theme: string): void {
-        if (theme) {
-            this.changeTheme(theme);
-            this._currentTheme = theme;
-        }
-    }
-
-
 
     /**
      * Initializes the IndexedDB database
      */
     private initDB() {
-        const request = indexedDB.open("theme-db", 1)
+        const request = indexedDB.open("theme-db", 1);
         request.onupgradeneeded = (event: any) => {
-            this.db = event.target.result
-            const objectStore = this.db?.createObjectStore("theme", { keyPath: "id" })
-            objectStore?.createIndex("id", "id", { unique: true })
-        }
+            this.db = event.target.result;
+            const objectStore = this.db?.createObjectStore("theme", { keyPath: "id" });
+            objectStore?.createIndex("id", "id", { unique: true });
+        };
 
         request.onsuccess = (event: any) => {
-            this.db = event.target.result
-            this.getCurrentTheme()
-            console.log(this.getCurrentTheme())
-        }
+            this.db = event.target.result;
+            this.getCurrentTheme();
+        };
     }
 
     /**
@@ -62,20 +46,34 @@ export default class ThemeManager {
      */
     private getCurrentTheme() {
         if (this.db) {
-            const transaction = this.db.transaction("theme", "readonly")
-            const objectStore = transaction.objectStore("theme")
-            const request = objectStore.get("theme")
+            const transaction = this.db.transaction("theme", "readonly");
+            const objectStore = transaction.objectStore("theme");
+            const request = objectStore.get("theme");
             request.onsuccess = (event: any) => {
-                const theme: Theme | null = event.target.result
+                const theme: Theme | null = event.target.result;
                 if (theme) {
-                    document.documentElement.setAttribute("data-theme", this.changeTheme(theme.value))
+                    this.currentTheme = theme.value;
                 } else {
-                    this.changeTheme("system") // Set default theme if no theme is found in a database
+                    this.currentTheme = "system"; // Set default theme if no theme is found in the database
                 }
-            }
+            };
         }
     }
 
+    /**
+     * Getter for the current theme
+     */
+    public get currentTheme(): string {
+        return document.documentElement.getAttribute("data-theme") || "system";
+    }
+
+    /**
+     * Setter for the current theme
+     */
+    public set currentTheme(value: string) {
+        this.changeTheme(value);
+        this.updateAriaCurrent(value);
+    }
 
     /**
      * Changes the current theme
@@ -84,53 +82,51 @@ export default class ThemeManager {
      */
     private changeTheme(value: string = "system"): string {
         if (!this.themes.has(value)) {
-            value = "system" // Fallback to default of invalid theme
+            value = "system"; // Fallback to default if invalid theme
         }
 
         // Remove all theme classes
         Array.from(this.themes).forEach((theme) => {
-            document.documentElement.classList.remove(theme)
-        })
+            document.documentElement.classList.remove(theme);
+        });
 
         if (value === "system") {
             // Get the system default theme
-            const systemDefaultTheme = this.mediaQuery.matches ? "dark" : "light"
-            document.documentElement.classList.add(systemDefaultTheme) // add the system default theme class
-            document.documentElement.setAttribute("data-theme", systemDefaultTheme)
+            const systemDefaultTheme = this.mediaQuery.matches ? "dark" : "light";
+            document.documentElement.classList.add(systemDefaultTheme); // add the system default theme class
+            document.documentElement.setAttribute("data-theme", systemDefaultTheme);
 
             // Save the system default theme to the database
-            if (this.db) {
-                const transaction = this.db.transaction("theme", "readwrite")
-                const objectStore = transaction.objectStore("theme")
-                const request = objectStore.put({ id: "theme", value: systemDefaultTheme })
-
-                request.onsuccess = () => {
-                    // console.log("Theme saved to IndexedDB");
-                }
-
-                request.onerror = (event: any) => {
-                    console.error("Error saving theme to IndexedDB:", event.target.error)
-                }
-            }
+            this.saveTheme(systemDefaultTheme);
         } else {
-            document.documentElement.classList.add(value) // add the current theme class
-            document.documentElement.setAttribute("data-theme", value)
+            document.documentElement.classList.add(value); // add the current theme class
+            document.documentElement.setAttribute("data-theme", value);
 
-            if (this.db) {
-                const transaction = this.db.transaction("theme", "readwrite")
-                const objectStore = transaction.objectStore("theme")
-                const request = objectStore.put({ id: "theme", value })
-
-                request.onsuccess = () => {
-                    // console.log("Theme saved to IndexedDB");
-                }
-
-                request.onerror = (event: any) => {
-                    console.error("Error saving theme to IndexedDB:", event.target.error)
-                }
-            }
+            // Save the theme to the database
+            this.saveTheme(value);
         }
-        return value
+
+        return value;
+    }
+
+    /**
+     * Saves the theme to the database
+     * @param value The theme value to save
+     */
+    private saveTheme(value: string) {
+        if (this.db) {
+            const transaction = this.db.transaction("theme", "readwrite");
+            const objectStore = transaction.objectStore("theme");
+            const request = objectStore.put({ id: "theme", value });
+
+            request.onsuccess = () => {
+                // console.log("Theme saved to IndexedDB");
+            };
+
+            request.onerror = (event: any) => {
+                console.error("Error saving theme to IndexedDB:", event.target.error);
+            };
+        }
     }
 
     /**
@@ -139,11 +135,29 @@ export default class ThemeManager {
     public initButtons() {
         document.querySelectorAll("[data-theme-name]")?.forEach((button) => {
             button.addEventListener("click", (event) => {
-                const buttonElement = event.target as HTMLElement
-                const themeValue = buttonElement.dataset.themeName
-                this.changeTheme(themeValue)
-            })
-        })
+                const buttonElement = event.target as HTMLElement;
+                const themeValue = buttonElement.dataset.themeName;
+                this.currentTheme = themeValue || "system";
+            });
+        });
+
+        // Set the initial aria-current attribute
+        this.updateAriaCurrent(this.currentTheme);
+    }
+
+    /**
+     * Updates the aria-current attribute on the button that matches the current theme
+     * @param theme The current theme value
+     */
+    private updateAriaCurrent(theme: string) {
+        document.querySelectorAll("[data-theme-name]")?.forEach((button) => {
+            const buttonElement = button as HTMLElement;
+            if (buttonElement.dataset.themeName === theme) {
+                buttonElement.setAttribute("aria-current", "true");
+            } else {
+                buttonElement.removeAttribute("aria-current");
+            }
+        });
     }
 
     /**
@@ -161,7 +175,7 @@ export default class ThemeManager {
                     newTheme = "light";
                 }
 
-                this.changeTheme(newTheme);
+                this.currentTheme = newTheme;
             });
         });
     }
